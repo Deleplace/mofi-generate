@@ -65,9 +65,38 @@ func writeToFile(ctx context.Context, filename string, goroutines, dataPerGorout
 	return bf.Flush()
 }
 
+func writeToFiles(ctx context.Context, goroutines, dataPerGoroutine int) ([]*os.File, error) {
+	files := make([]*os.File, 50)
+
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+	for i := range files {
+		var err error
+		files[i], err = os.CreateTemp("", "")
+		if err != nil {
+			return nil, err
+		}
+		defer files[i].Close()
+
+		bufferByteSize := bufferSize * 1024 * 1024
+		bf := bufio.NewWriterSize(files[i], bufferByteSize)
+		go func() {
+			defer wg.Done()
+			err := write(ctx, bf, 1, dataPerGoroutine)
+			if err != nil {
+				panic(err)
+			}
+		}()
+	}
+	wg.Wait()
+	return files, nil
+}
+
 func write(ctx context.Context, w io.Writer, goroutines, dataPerGoroutine int) error {
 	errs, _ := errgroup.WithContext(ctx)
-	var filelock sync.Mutex
+	if goroutines != 1 {
+		panic(goroutines)
+	}
 	n := bufferSize * 1024 * 4 // number of lines in 1 buffered batch
 
 	for i := 0; i < goroutines; i++ {
@@ -80,9 +109,7 @@ func write(ctx context.Context, w io.Writer, goroutines, dataPerGoroutine int) e
 
 			flushRefreshReuse := func() error {
 				// Flush to w
-				filelock.Lock()
 				_, err := w.Write(outputBuffer)
-				filelock.Unlock()
 				// Refresh work buffers with new random bytes
 				r.Read(randomBytes)
 				hex.Encode(randomHexDigits, randomBytes)

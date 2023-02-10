@@ -105,12 +105,13 @@ func BenchmarkWriteFile1_000_000_4workers(b *testing.B) {
 func BenchmarkWriteFile1_000_000_50workers(b *testing.B) {
 	ctx := context.Background()
 	for i := 0; i < b.N; i++ {
-		tmpfile, err := os.CreateTemp("", "")
-		if err != nil {
-			b.Fatal(err)
-		}
-		filename := tmpfile.Name()
+		// tmpfile, err := os.CreateTemp("", "")
+		// if err != nil {
+		// 	b.Fatal(err)
+		// }
+		//filename := tmpfile.Name()
 
-		writeToFile(ctx, filename, 50, 20_000)
+		//writeToFile(ctx, filename, 50, 20_000)
+		_, _ = writeToFiles(ctx, 50, 20_000)
 	}
 }
